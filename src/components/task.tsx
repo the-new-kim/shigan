@@ -31,7 +31,7 @@ interface TaskProps {
   onDelete: (id: string) => Promise<void>;
 }
 
-export function Task({ task, onUpdate, onDelete }: TaskProps) {
+function Task({ task, onUpdate, onDelete }: TaskProps) {
   const [isEditing, setIsEditing] = useState(false);
 
   const form = useForm<TaskFormValues>({
@@ -172,3 +172,5 @@ export function Task({ task, onUpdate, onDelete }: TaskProps) {
     </div>
   );
 }
+
+export { Task };

@@ -3,7 +3,7 @@ import type { Task } from '../lib/db';
 import { getTasksByQuadrant, addTask, updateTask, deleteTask } from '../lib/db';
 import { Task as TaskComponent } from './task';
 
-export function EisenhowerMatrix() {
+function EisenhowerMatrix() {
   const [tasks, setTasks] = useState<{
     q1: Task[];
     q2: Task[];
@@ -153,3 +153,5 @@ export function EisenhowerMatrix() {
     </div>
   );
 }
+
+export { EisenhowerMatrix };
