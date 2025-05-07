@@ -1,11 +1,9 @@
-import { Button } from './components/ui/button';
+import { EisenhowerMatrix } from './components/eisenhower-matrix';
 
-function App() {
+export function App() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-svh">
-      <Button>Click me</Button>
+    <div className="min-h-screen bg-gray-100">
+      <EisenhowerMatrix />
     </div>
   );
 }
-
-export { App };
