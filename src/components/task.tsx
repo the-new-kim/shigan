@@ -1,5 +1,29 @@
 import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import type { Task as TaskType } from '../lib/db';
+import { Button } from '@/components/ui/button';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Slider } from '@/components/ui/slider';
+
+const taskFormSchema = z.object({
+  title: z.string().min(1, 'Title is required'),
+  description: z.string(),
+  priority: z.number().min(0).max(10),
+  dueDate: z.string().min(1, 'Due date is required'),
+});
+
+type TaskFormValues = z.infer<typeof taskFormSchema>;
 
 interface TaskProps {
   task: TaskType;
@@ -9,20 +33,22 @@ interface TaskProps {
 
 export function Task({ task, onUpdate, onDelete }: TaskProps) {
   const [isEditing, setIsEditing] = useState(false);
-  const [title, setTitle] = useState(task.title);
-  const [description, setDescription] = useState(task.description);
-  const [priority, setPriority] = useState(task.priority);
-  const [dueDate, setDueDate] = useState(
-    task.dueDate.toISOString().split('T')[0],
-  );
 
-  const handleSave = async () => {
+  const form = useForm<TaskFormValues>({
+    resolver: zodResolver(taskFormSchema),
+    defaultValues: {
+      title: task.title,
+      description: task.description,
+      priority: task.priority,
+      dueDate: task.dueDate.toISOString().split('T')[0],
+    },
+  });
+
+  const handleSave = async (values: TaskFormValues) => {
     await onUpdate({
       ...task,
-      title,
-      description,
-      priority,
-      dueDate: new Date(dueDate),
+      ...values,
+      dueDate: new Date(values.dueDate),
     });
     setIsEditing(false);
   };
@@ -37,53 +63,78 @@ export function Task({ task, onUpdate, onDelete }: TaskProps) {
   if (isEditing) {
     return (
       <div className="p-4 border rounded-lg shadow-sm bg-white">
-        <input
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          className="w-full mb-2 p-2 border rounded"
-          placeholder="Task title"
-        />
-        <textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          className="w-full mb-2 p-2 border rounded"
-          placeholder="Task description"
-        />
-        <div className="mb-2">
-          <label className="block text-sm font-medium text-gray-700">
-            Priority
-          </label>
-          <input
-            type="range"
-            min="0"
-            max="10"
-            value={priority}
-            onChange={(e) => setPriority(Number(e.target.value))}
-            className="w-full"
-          />
-          <span className="text-sm text-gray-500">{priority}</span>
-        </div>
-        <input
-          type="date"
-          value={dueDate}
-          onChange={(e) => setDueDate(e.target.value)}
-          className="w-full mb-2 p-2 border rounded"
-        />
-        <div className="flex justify-end gap-2">
-          <button
-            onClick={() => setIsEditing(false)}
-            className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
-          >
-            Save
-          </button>
-        </div>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleSave)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="title"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Title</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Task title" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="Task description" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="priority"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Priority: {field.value}</FormLabel>
+                  <FormControl>
+                    <Slider
+                      min={0}
+                      max={10}
+                      step={1}
+                      value={[field.value]}
+                      onValueChange={([value]) => field.onChange(value)}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="dueDate"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Due Date</FormLabel>
+                  <FormControl>
+                    <Input type="date" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setIsEditing(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit">Save</Button>
+            </div>
+          </form>
+        </Form>
       </div>
     );
   }
@@ -104,28 +155,18 @@ export function Task({ task, onUpdate, onDelete }: TaskProps) {
           </div>
         </div>
         <div className="flex gap-2">
-          <button
+          <Button
+            variant={task.completed ? 'secondary' : 'default'}
             onClick={handleComplete}
-            className={`px-3 py-1 text-sm rounded ${
-              task.completed
-                ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                : 'bg-green-500 text-white hover:bg-green-600'
-            }`}
           >
             {task.completed ? 'Undo' : 'Complete'}
-          </button>
-          <button
-            onClick={() => setIsEditing(true)}
-            className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
-          >
+          </Button>
+          <Button variant="ghost" onClick={() => setIsEditing(true)}>
             Edit
-          </button>
-          <button
-            onClick={() => onDelete(task.id)}
-            className="px-3 py-1 text-sm text-red-600 hover:text-red-800"
-          >
+          </Button>
+          <Button variant="destructive" onClick={() => onDelete(task.id)}>
             Delete
-          </button>
+          </Button>
         </div>
       </div>
     </div>
