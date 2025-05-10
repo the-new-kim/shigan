@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import type { Task as TaskType } from '../lib/db';
+import { TaskStatus } from '../lib/db';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -15,12 +16,20 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const taskFormSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   description: z.string(),
   priority: z.number().min(0).max(10),
   dueDate: z.string().min(1, 'Due date is required'),
+  status: z.nativeEnum(TaskStatus),
 });
 
 type TaskFormValues = z.infer<typeof taskFormSchema>;
@@ -41,6 +50,7 @@ function Task({ task, onUpdate, onDelete }: TaskProps) {
       description: task.description,
       priority: task.priority,
       dueDate: task.dueDate.toISOString().split('T')[0],
+      status: task.status,
     },
   });
 
@@ -53,10 +63,10 @@ function Task({ task, onUpdate, onDelete }: TaskProps) {
     setIsEditing(false);
   };
 
-  const handleComplete = async () => {
+  const handleStatusChange = async (status: TaskStatus) => {
     await onUpdate({
       ...task,
-      completed: !task.completed,
+      status,
     });
   };
 
@@ -123,6 +133,33 @@ function Task({ task, onUpdate, onDelete }: TaskProps) {
                 </FormItem>
               )}
             />
+            <FormField
+              control={form.control}
+              name="status"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Status</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value={TaskStatus.TODO}>TODO</SelectItem>
+                      <SelectItem value={TaskStatus.IN_PROGRESS}>
+                        IN_PROGRESS
+                      </SelectItem>
+                      <SelectItem value={TaskStatus.DONE}>DONE</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <div className="flex justify-end gap-2">
               <Button
                 type="button"
@@ -144,7 +181,11 @@ function Task({ task, onUpdate, onDelete }: TaskProps) {
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <h3
-            className={`text-lg font-medium ${task.completed ? 'line-through text-gray-500' : ''}`}
+            className={`text-lg font-medium ${
+              task.status === TaskStatus.DONE
+                ? 'line-through text-gray-500'
+                : ''
+            }`}
           >
             {task.title}
           </h3>
@@ -155,12 +196,21 @@ function Task({ task, onUpdate, onDelete }: TaskProps) {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button
-            variant={task.completed ? 'secondary' : 'default'}
-            onClick={handleComplete}
+          <Select
+            onValueChange={(value: TaskStatus) => handleStatusChange(value)}
+            defaultValue={task.status}
           >
-            {task.completed ? 'Undo' : 'Complete'}
-          </Button>
+            <SelectTrigger className="w-[100px]">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={TaskStatus.TODO}>TODO</SelectItem>
+              <SelectItem value={TaskStatus.IN_PROGRESS}>
+                IN_PROGRESS
+              </SelectItem>
+              <SelectItem value={TaskStatus.DONE}>DONE</SelectItem>
+            </SelectContent>
+          </Select>
           <Button variant="ghost" onClick={() => setIsEditing(true)}>
             Edit
           </Button>

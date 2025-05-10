@@ -1,13 +1,19 @@
 import type { DBSchema, IDBPDatabase } from 'idb';
 import { openDB } from 'idb';
 
+export enum TaskStatus {
+  TODO = 'TODO',
+  IN_PROGRESS = 'IN_PROGRESS',
+  DONE = 'DONE',
+}
+
 export interface Task {
   id: string;
   title: string;
   description: string;
   dueDate: Date;
   priority: number; // 0-10
-  completed: boolean;
+  status: TaskStatus;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -19,7 +25,7 @@ interface TaskDB extends DBSchema {
     indexes: {
       'by-dueDate': Date;
       'by-priority': number;
-      'by-completed': number;
+      'by-status': TaskStatus;
     };
   };
 }
@@ -34,7 +40,7 @@ export const initDB = async () => {
       const store = database.createObjectStore('tasks', { keyPath: 'id' });
       store.createIndex('by-dueDate', 'dueDate');
       store.createIndex('by-priority', 'priority');
-      store.createIndex('by-completed', 'completed');
+      store.createIndex('by-status', 'status');
     },
   });
 
@@ -54,13 +60,15 @@ export const addTask = async (
   const db = await getDB();
   const id = crypto.randomUUID();
   const now = new Date();
-
-  return db.add('tasks', {
+  const newTask = {
     ...task,
     id,
     createdAt: now,
     updatedAt: now,
-  });
+  };
+  await db.add('tasks', newTask);
+
+  return newTask;
 };
 
 export const updateTask = async (task: Task) => {
@@ -82,21 +90,21 @@ export const getAllTasks = async () => {
 };
 
 export const getTasksByQuadrant = async () => {
-  const tasks = await getAllTasks();
+  const db = await getDB();
+  const tasks = await db.getAll('tasks');
   const now = new Date();
-
-  return {
-    q1: tasks.filter(
-      (task) => !task.completed && task.priority >= 7 && task.dueDate <= now,
-    ), // Urgent & Important
-    q2: tasks.filter(
-      (task) => !task.completed && task.priority >= 7 && task.dueDate > now,
-    ), // Not Urgent & Important
-    q3: tasks.filter(
-      (task) => !task.completed && task.priority < 7 && task.dueDate <= now,
-    ), // Urgent & Not Important
-    q4: tasks.filter(
-      (task) => !task.completed && task.priority < 7 && task.dueDate > now,
-    ), // Not Urgent & Not Important
+  const result = {
+    q1: tasks.filter((task) => task.priority >= 7 && task.dueDate <= now), // Urgent & Important
+    q2: tasks.filter((task) => task.priority >= 7 && task.dueDate > now), // Not Urgent & Important
+    q3: tasks.filter((task) => task.priority < 7 && task.dueDate <= now), // Urgent & Not Important
+    q4: tasks.filter((task) => task.priority < 7 && task.dueDate > now), // Not Urgent & Not Important
   };
+
+  return result;
+};
+
+export const getCompletedTasks = async () => {
+  const db = await getDB();
+  const tasks = await db.getAll('tasks');
+  return tasks.filter((task) => task.status === TaskStatus.DONE);
 };

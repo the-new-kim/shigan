@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 import type { Task } from '../lib/db';
+import { TaskStatus } from '../lib/db';
 import { getTasksByQuadrant, addTask, updateTask, deleteTask } from '../lib/db';
 import { Task as TaskComponent } from './task';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 
 function EisenhowerMatrix() {
   const [tasks, setTasks] = useState<{
@@ -11,11 +14,15 @@ function EisenhowerMatrix() {
     q4: Task[];
   }>({ q1: [], q2: [], q3: [], q4: [] });
   const [isAddingTask, setIsAddingTask] = useState(false);
+  const [statusFilters, setStatusFilters] = useState<Set<TaskStatus>>(
+    new Set(Object.values(TaskStatus)),
+  );
   const [newTask, setNewTask] = useState({
     title: '',
     description: '',
     priority: 5,
     dueDate: new Date().toISOString().split('T')[0],
+    status: TaskStatus.TODO,
   });
 
   const loadTasks = async () => {
@@ -31,13 +38,13 @@ function EisenhowerMatrix() {
     await addTask({
       ...newTask,
       dueDate: new Date(newTask.dueDate),
-      completed: false,
     });
     setNewTask({
       title: '',
       description: '',
       priority: 5,
       dueDate: new Date().toISOString().split('T')[0],
+      status: TaskStatus.TODO,
     });
     setIsAddingTask(false);
     loadTasks();
@@ -53,11 +60,28 @@ function EisenhowerMatrix() {
     loadTasks();
   };
 
+  const filterTasks = (tasks: Task[]) => {
+    if (statusFilters.size === 0) return tasks;
+    return tasks.filter((task) => statusFilters.has(task.status));
+  };
+
+  const handleStatusFilterChange = (status: TaskStatus, checked: boolean) => {
+    setStatusFilters((prev) => {
+      const newFilters = new Set(prev);
+      if (checked) {
+        newFilters.add(status);
+      } else {
+        newFilters.delete(status);
+      }
+      return newFilters;
+    });
+  };
+
   const Quadrant = ({ title, tasks }: { title: string; tasks: Task[] }) => (
     <div className="p-4 border rounded-lg bg-gray-50">
       <h2 className="text-lg font-semibold mb-4">{title}</h2>
       <div className="space-y-4">
-        {tasks.map((task) => (
+        {filterTasks(tasks).map((task) => (
           <TaskComponent
             key={task.id}
             task={task}
@@ -73,12 +97,28 @@ function EisenhowerMatrix() {
     <div className="container mx-auto p-4">
       <div className="mb-6 flex justify-between items-center">
         <h1 className="text-2xl font-bold">Eisenhower Matrix</h1>
-        <button
-          onClick={() => setIsAddingTask(true)}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
-          Add Task
-        </button>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4">
+            {Object.values(TaskStatus).map((status) => (
+              <div key={status} className="flex items-center space-x-2">
+                <Checkbox
+                  id={`status-${status}`}
+                  checked={statusFilters.has(status)}
+                  onCheckedChange={(checked: boolean) =>
+                    handleStatusFilterChange(status, checked)
+                  }
+                />
+                <Label htmlFor={`status-${status}`}>{status}</Label>
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={() => setIsAddingTask(true)}
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            Add Task
+          </button>
+        </div>
       </div>
 
       {isAddingTask && (
