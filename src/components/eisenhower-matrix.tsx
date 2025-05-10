@@ -5,6 +5,14 @@ import { getTasksByQuadrant, addTask, updateTask, deleteTask } from '../lib/db';
 import { Task as TaskComponent } from './task';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { TaskForm, type TaskFormValues } from './task-form';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 function EisenhowerMatrix() {
   const [tasks, setTasks] = useState<{
@@ -17,13 +25,6 @@ function EisenhowerMatrix() {
   const [statusFilters, setStatusFilters] = useState<Set<TaskStatus>>(
     new Set(Object.values(TaskStatus)),
   );
-  const [newTask, setNewTask] = useState({
-    title: '',
-    description: '',
-    priority: 5,
-    dueDate: new Date().toISOString().split('T')[0],
-    status: TaskStatus.TODO,
-  });
 
   const loadTasks = async () => {
     const tasksByQuadrant = await getTasksByQuadrant();
@@ -34,17 +35,10 @@ function EisenhowerMatrix() {
     loadTasks();
   }, []);
 
-  const handleAddTask = async () => {
+  const handleAddTask = async (values: TaskFormValues) => {
     await addTask({
-      ...newTask,
-      dueDate: new Date(newTask.dueDate),
-    });
-    setNewTask({
-      title: '',
-      description: '',
-      priority: 5,
-      dueDate: new Date().toISOString().split('T')[0],
-      status: TaskStatus.TODO,
+      ...values,
+      dueDate: new Date(values.dueDate),
     });
     setIsAddingTask(false);
     loadTasks();
@@ -96,8 +90,8 @@ function EisenhowerMatrix() {
   return (
     <div className="container mx-auto p-4">
       <div className="mb-6 flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Eisenhower Matrix</h1>
         <div className="flex items-center gap-4">
+          <h1 className="text-2xl font-bold">Eisenhower Matrix</h1>
           <div className="flex items-center gap-4">
             {Object.values(TaskStatus).map((status) => (
               <div key={status} className="flex items-center space-x-2">
@@ -112,77 +106,22 @@ function EisenhowerMatrix() {
               </div>
             ))}
           </div>
-          <button
-            onClick={() => setIsAddingTask(true)}
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          >
-            Add Task
-          </button>
         </div>
+        <Button onClick={() => setIsAddingTask(true)}>Add Task</Button>
       </div>
 
-      {isAddingTask && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md">
-            <h2 className="text-xl font-semibold mb-4">Add New Task</h2>
-            <input
-              type="text"
-              value={newTask.title}
-              onChange={(e) =>
-                setNewTask({ ...newTask, title: e.target.value })
-              }
-              className="w-full mb-2 p-2 border rounded"
-              placeholder="Task title"
-            />
-            <textarea
-              value={newTask.description}
-              onChange={(e) =>
-                setNewTask({ ...newTask, description: e.target.value })
-              }
-              className="w-full mb-2 p-2 border rounded"
-              placeholder="Task description"
-            />
-            <div className="mb-2">
-              <label className="block text-sm font-medium text-gray-700">
-                Priority
-              </label>
-              <input
-                type="range"
-                min="0"
-                max="10"
-                value={newTask.priority}
-                onChange={(e) =>
-                  setNewTask({ ...newTask, priority: Number(e.target.value) })
-                }
-                className="w-full"
-              />
-              <span className="text-sm text-gray-500">{newTask.priority}</span>
-            </div>
-            <input
-              type="date"
-              value={newTask.dueDate}
-              onChange={(e) =>
-                setNewTask({ ...newTask, dueDate: e.target.value })
-              }
-              className="w-full mb-4 p-2 border rounded"
-            />
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setIsAddingTask(false)}
-                className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAddTask}
-                className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
-              >
-                Add Task
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog open={isAddingTask} onOpenChange={setIsAddingTask}>
+        <DialogContent aria-describedby={undefined}>
+          <DialogHeader>
+            <DialogTitle>Add New Task</DialogTitle>
+          </DialogHeader>
+          <TaskForm
+            onSubmit={handleAddTask}
+            onCancel={() => setIsAddingTask(false)}
+            submitLabel="Add Task"
+          />
+        </DialogContent>
+      </Dialog>
 
       <div className="grid grid-cols-2 gap-4">
         <Quadrant title="Urgent & Important" tasks={tasks.q1} />
