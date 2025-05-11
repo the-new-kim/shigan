@@ -1,13 +1,16 @@
 import { useState } from 'react';
 import type { Task as TaskType } from '../lib/db';
 import { TaskStatus } from '../lib/db';
-import { TaskForm, type TaskFormValues } from './task-form';
+import { TaskFormDialog, type TaskFormValues } from './task-form-dialog';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
+  DialogFooter,
 } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 
 interface TaskProps {
   task: TaskType;
@@ -16,7 +19,8 @@ interface TaskProps {
 }
 
 function Task({ task, onUpdate, onDelete }: TaskProps) {
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const handleSave = async (values: TaskFormValues) => {
     await onUpdate({
@@ -24,19 +28,19 @@ function Task({ task, onUpdate, onDelete }: TaskProps) {
       ...values,
       dueDate: new Date(values.dueDate),
     });
-    setIsModalOpen(false);
   };
 
   const handleDelete = async () => {
     await onDelete(task.id);
-    setIsModalOpen(false);
+    setIsDeleteDialogOpen(false);
+    setIsEditDialogOpen(false);
   };
 
   return (
     <>
       <div
         className="p-4 border rounded-lg shadow-sm bg-white cursor-pointer hover:bg-gray-50 transition-colors"
-        onClick={() => setIsModalOpen(true)}
+        onClick={() => setIsEditDialogOpen(true)}
       >
         <div className="flex-1">
           <h3
@@ -57,17 +61,34 @@ function Task({ task, onUpdate, onDelete }: TaskProps) {
         </div>
       </div>
 
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent aria-describedby={undefined}>
+      <TaskFormDialog
+        task={task}
+        isOpen={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        onSubmit={handleSave}
+        onDelete={() => setIsDeleteDialogOpen(true)}
+      />
+
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Task</DialogTitle>
+            <DialogTitle>Delete Task</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{task.title}"? This action cannot
+              be undone.
+            </DialogDescription>
           </DialogHeader>
-          <TaskForm
-            task={task}
-            onSubmit={handleSave}
-            onCancel={() => setIsModalOpen(false)}
-            onDelete={handleDelete}
-          />
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDelete}>
+              Delete
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

@@ -6,7 +6,7 @@ import { Task as TaskComponent } from './task';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { TaskForm, type TaskFormValues } from './task-form';
+import { TaskFormDialog, type TaskFormValues } from './task-form-dialog';
 import {
   Dialog,
   DialogContent,
@@ -115,9 +115,10 @@ function EisenhowerMatrix() {
           <DialogHeader>
             <DialogTitle>Add New Task</DialogTitle>
           </DialogHeader>
-          <TaskForm
+          <TaskFormDialog
+            isOpen={isAddingTask}
+            onOpenChange={setIsAddingTask}
             onSubmit={handleAddTask}
-            onCancel={() => setIsAddingTask(false)}
             submitLabel="Add Task"
           />
         </DialogContent>
