@@ -2,20 +2,16 @@ import type { DragEvent } from 'react';
 import { useEffect, useState } from 'react';
 import type { Task } from '../lib/db';
 import { TaskStatus } from '../lib/db';
-import { getAllTasks, updateTask, deleteTask, addTask } from '../lib/db';
+import { getAllTasks, updateTask, deleteTask } from '../lib/db';
 import { Task as TaskComponent } from './task';
-import { Button } from '@/components/ui/button';
-import { TaskFormDialog, type TaskFormValues } from './task-form-dialog';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 
-function KanbanBoard() {
+interface KanbanBoardProps {
+  refreshTrigger?: number;
+}
+
+function KanbanBoard({ refreshTrigger = 0 }: KanbanBoardProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [isAddingTask, setIsAddingTask] = useState(false);
+
   const [isLoading, setIsLoading] = useState(true);
 
   const loadTasks = async () => {
@@ -32,16 +28,7 @@ function KanbanBoard() {
 
   useEffect(() => {
     loadTasks();
-  }, []);
-
-  const handleAddTask = async (values: TaskFormValues) => {
-    await addTask({
-      ...values,
-      dueDate: new Date(values.dueDate),
-    });
-    setIsAddingTask(false);
-    loadTasks();
-  };
+  }, [refreshTrigger]);
 
   const handleUpdateTask = async (task: Task) => {
     await updateTask(task);
@@ -119,31 +106,10 @@ function KanbanBoard() {
   );
 
   return (
-    <div className="container mx-auto p-4">
-      <div className="mb-6 flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Kanban Board</h1>
-        <Button onClick={() => setIsAddingTask(true)}>Add Task</Button>
-      </div>
-
-      <Dialog open={isAddingTask} onOpenChange={setIsAddingTask}>
-        <DialogContent aria-describedby={undefined}>
-          <DialogHeader>
-            <DialogTitle>Add New Task</DialogTitle>
-          </DialogHeader>
-          <TaskFormDialog
-            isOpen={isAddingTask}
-            onOpenChange={setIsAddingTask}
-            onSubmit={handleAddTask}
-            submitLabel="Add Task"
-          />
-        </DialogContent>
-      </Dialog>
-
-      <div className="flex gap-4">
-        <Column status={TaskStatus.TODO} title="To Do" />
-        <Column status={TaskStatus.IN_PROGRESS} title="In Progress" />
-        <Column status={TaskStatus.DONE} title="Done" />
-      </div>
+    <div className="flex gap-4">
+      <Column status={TaskStatus.TODO} title="To Do" />
+      <Column status={TaskStatus.IN_PROGRESS} title="In Progress" />
+      <Column status={TaskStatus.DONE} title="Done" />
     </div>
   );
 }

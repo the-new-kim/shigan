@@ -1,27 +1,22 @@
 import { useEffect, useState } from 'react';
 import type { Task } from '../lib/db';
 import { TaskStatus } from '../lib/db';
-import { getTasksByQuadrant, addTask, updateTask, deleteTask } from '../lib/db';
+import { getTasksByQuadrant, updateTask, deleteTask } from '../lib/db';
 import { Task as TaskComponent } from './task';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
-import { TaskFormDialog, type TaskFormValues } from './task-form-dialog';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 
-function EisenhowerMatrix() {
+interface EisenhowerMatrixProps {
+  refreshTrigger?: number;
+}
+
+function EisenhowerMatrix({ refreshTrigger = 0 }: EisenhowerMatrixProps) {
   const [tasks, setTasks] = useState<{
     q1: Task[];
     q2: Task[];
     q3: Task[];
     q4: Task[];
   }>({ q1: [], q2: [], q3: [], q4: [] });
-  const [isAddingTask, setIsAddingTask] = useState(false);
   const [statusFilters, setStatusFilters] = useState<Set<TaskStatus>>(
     new Set(Object.values(TaskStatus)),
   );
@@ -33,16 +28,7 @@ function EisenhowerMatrix() {
 
   useEffect(() => {
     loadTasks();
-  }, []);
-
-  const handleAddTask = async (values: TaskFormValues) => {
-    await addTask({
-      ...values,
-      dueDate: new Date(values.dueDate),
-    });
-    setIsAddingTask(false);
-    loadTasks();
-  };
+  }, [refreshTrigger]);
 
   const handleUpdateTask = async (task: Task) => {
     await updateTask(task);
@@ -88,41 +74,21 @@ function EisenhowerMatrix() {
   );
 
   return (
-    <div className="container mx-auto p-4">
-      <div className="mb-6 flex justify-between items-center">
-        <div className="flex items-center gap-4">
-          <h1 className="text-2xl font-bold">Eisenhower Matrix</h1>
-          <div className="flex items-center gap-4">
-            {Object.values(TaskStatus).map((status) => (
-              <div key={status} className="flex items-center space-x-2">
-                <Checkbox
-                  id={`status-${status}`}
-                  checked={statusFilters.has(status)}
-                  onCheckedChange={(checked: boolean) =>
-                    handleStatusFilterChange(status, checked)
-                  }
-                />
-                <Label htmlFor={`status-${status}`}>{status}</Label>
-              </div>
-            ))}
+    <div>
+      <div className="flex items-center gap-4 mb-4">
+        {Object.values(TaskStatus).map((status) => (
+          <div key={status} className="flex items-center space-x-2">
+            <Checkbox
+              id={`status-${status}`}
+              checked={statusFilters.has(status)}
+              onCheckedChange={(checked: boolean) =>
+                handleStatusFilterChange(status, checked)
+              }
+            />
+            <Label htmlFor={`status-${status}`}>{status}</Label>
           </div>
-        </div>
-        <Button onClick={() => setIsAddingTask(true)}>Add Task</Button>
+        ))}
       </div>
-
-      <Dialog open={isAddingTask} onOpenChange={setIsAddingTask}>
-        <DialogContent aria-describedby={undefined}>
-          <DialogHeader>
-            <DialogTitle>Add New Task</DialogTitle>
-          </DialogHeader>
-          <TaskFormDialog
-            isOpen={isAddingTask}
-            onOpenChange={setIsAddingTask}
-            onSubmit={handleAddTask}
-            submitLabel="Add Task"
-          />
-        </DialogContent>
-      </Dialog>
 
       <div className="grid grid-cols-2 gap-4">
         <Quadrant title="Urgent & Important" tasks={tasks.q1} />
