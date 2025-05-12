@@ -89,15 +89,18 @@ export const getAllTasks = async () => {
   return db.getAll('tasks');
 };
 
-export const getTasksByQuadrant = async () => {
+export const getTasksByQuadrant = async (daysThreshold: number = 0) => {
   const db = await getDB();
   const tasks = await db.getAll('tasks');
   const now = new Date();
+  const thresholdDate = new Date();
+  thresholdDate.setDate(now.getDate() + daysThreshold);
+  
   const result = {
-    q1: tasks.filter((task) => task.priority >= 7 && task.dueDate <= now), // Urgent & Important
-    q2: tasks.filter((task) => task.priority >= 7 && task.dueDate > now), // Not Urgent & Important
-    q3: tasks.filter((task) => task.priority < 7 && task.dueDate <= now), // Urgent & Not Important
-    q4: tasks.filter((task) => task.priority < 7 && task.dueDate > now), // Not Urgent & Not Important
+    q1: tasks.filter((task) => task.priority >= 7 && task.dueDate <= thresholdDate), // Urgent & Important
+    q2: tasks.filter((task) => task.priority >= 7 && task.dueDate > thresholdDate), // Not Urgent & Important
+    q3: tasks.filter((task) => task.priority < 7 && task.dueDate <= thresholdDate), // Urgent & Not Important
+    q4: tasks.filter((task) => task.priority < 7 && task.dueDate > thresholdDate), // Not Urgent & Not Important
   };
 
   return result;

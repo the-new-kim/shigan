@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { Task } from '../lib/db';
 import { TaskStatus } from '../lib/db';
 import { getTasksByQuadrant, updateTask, deleteTask } from '../lib/db';
 import { Task as TaskComponent } from './task';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
+import { Input } from '@/components/ui/input';
 
 interface EisenhowerMatrixProps {
   refreshTrigger?: number;
@@ -20,15 +22,16 @@ function EisenhowerMatrix({ refreshTrigger = 0 }: EisenhowerMatrixProps) {
   const [statusFilters, setStatusFilters] = useState<Set<TaskStatus>>(
     new Set(Object.values(TaskStatus)),
   );
+  const [daysThreshold, setDaysThreshold] = useState(0);
 
-  const loadTasks = async () => {
-    const tasksByQuadrant = await getTasksByQuadrant();
+  const loadTasks = useCallback(async () => {
+    const tasksByQuadrant = await getTasksByQuadrant(daysThreshold);
     setTasks(tasksByQuadrant);
-  };
+  }, [daysThreshold]);
 
   useEffect(() => {
     loadTasks();
-  }, [refreshTrigger]);
+  }, [loadTasks, refreshTrigger]);
 
   const handleUpdateTask = async (task: Task) => {
     await updateTask(task);
@@ -74,20 +77,48 @@ function EisenhowerMatrix({ refreshTrigger = 0 }: EisenhowerMatrixProps) {
   );
 
   return (
-    <div>
-      <div className="flex items-center gap-4 mb-4">
-        {Object.values(TaskStatus).map((status) => (
-          <div key={status} className="flex items-center space-x-2">
-            <Checkbox
-              id={`status-${status}`}
-              checked={statusFilters.has(status)}
-              onCheckedChange={(checked: boolean) =>
-                handleStatusFilterChange(status, checked)
-              }
-            />
-            <Label htmlFor={`status-${status}`}>{status}</Label>
+    <div className="space-y-6">
+      <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+        <div className="space-y-2">
+          <div className="flex justify-between items-center">
+            <Label htmlFor="days-threshold">
+              Due Date Threshold: {daysThreshold === 0 ? 'Today' : `Within ${daysThreshold} days`}
+            </Label>
+            <div className="w-20">
+              <Input
+                type="number"
+                min="0"
+                max="30"
+                value={daysThreshold}
+                onChange={(e) => setDaysThreshold(Math.max(0, Math.min(30, Number(e.target.value) || 0)))}
+                className="h-8 text-center"
+              />
+            </div>
           </div>
-        ))}
+          <Slider
+            id="days-threshold"
+            min={0}
+            max={30}
+            step={1}
+            value={[daysThreshold]}
+            onValueChange={([value]) => setDaysThreshold(value)}
+            className="w-full"
+          />
+        </div>
+        <div className="flex items-center gap-4">
+          {Object.values(TaskStatus).map((status) => (
+            <div key={status} className="flex items-center space-x-2">
+              <Checkbox
+                id={`status-${status}`}
+                checked={statusFilters.has(status)}
+                onCheckedChange={(checked: boolean) =>
+                  handleStatusFilterChange(status, checked)
+                }
+              />
+              <Label htmlFor={`status-${status}`}>{status}</Label>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
