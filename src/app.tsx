@@ -1,5 +1,6 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EisenhowerMatrix } from './components/eisenhower-matrix';
+import { KanbanBoard } from './components/kanban-board';
 
 function App() {
   return (
@@ -14,10 +15,7 @@ function App() {
             <EisenhowerMatrix />
           </TabsContent>
           <TabsContent value="kanban" className="mt-6">
-            <div className="p-4 bg-white rounded-lg shadow">
-              <h1 className="text-2xl font-bold mb-4">Kanban Board</h1>
-              <p className="text-gray-500">Coming soon...</p>
-            </div>
+            <KanbanBoard />
           </TabsContent>
         </Tabs>
       </div>
