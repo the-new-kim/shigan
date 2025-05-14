@@ -1,25 +1,10 @@
 import { useState } from 'react';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { EisenhowerMatrix } from './components/eisenhower-matrix';
-import { KanbanBoard } from './components/kanban-board';
-import { Button } from '@/components/ui/button';
-import {
-  TaskFormDialog,
-  type TaskFormValues,
-} from './components/task-form-dialog';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { addTask } from './lib/db';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { EisenhowerMatrix } from '@/components/eisenhower-matrix';
+import { KanbanBoard } from '@/components/kanban-board';
+import { PageHeader } from '@/components/layout/page-header';
+import { TaskFormDialog, type TaskFormValues } from '@/components/task-form-dialog';
+import { addTask } from '@/lib/db';
 
 function App() {
   const [isAddingTask, setIsAddingTask] = useState(false);
@@ -40,22 +25,11 @@ function App() {
       <div className="container mx-auto py-6 px-4">
         <div className="w-full max-w-6xl mx-auto">
           <div className="w-full">
-            <div className="mb-6 flex justify-between items-center">
-              <div className="flex-grow-0">
-                <Select value={viewMode} onValueChange={setViewMode}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Select view" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="eisenhower">Eisenhower Matrix</SelectItem>
-                    <SelectItem value="kanban">Kanban Board</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex-grow"></div>
-              <Button onClick={() => setIsAddingTask(true)}>Add Task</Button>
-            </div>
+            <PageHeader 
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
+              onAddTask={() => setIsAddingTask(true)}
+            />
 
             <div className="mt-6">
               {viewMode === "eisenhower" ? (
