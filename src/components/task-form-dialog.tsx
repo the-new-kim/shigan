@@ -1,8 +1,5 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import type { Task } from '../lib/db';
-import { TaskStatus } from '../lib/db';
 import {
   Form,
   FormControl,
@@ -28,55 +25,62 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogTrigger,
+  DialogClose,
+  DialogDescription,
+  // DialogDescription,
 } from '@/components/ui/dialog';
-
-const taskFormSchema = z.object({
-  title: z.string().min(1, 'Title is required'),
-  description: z.string(),
-  priority: z.number().min(0).max(10),
-  dueDate: z.string().min(1, 'Due date is required'),
-  status: z.nativeEnum(TaskStatus),
-});
-
-type TaskFormValues = z.infer<typeof taskFormSchema>;
+import type { CreateTaskDto, TaskEntity } from '@/lib/types';
+import { createTaskSchema, TaskStatus } from '@/lib/types';
+import { useAddTask, useDeleteTask, useUpdateTask } from '@/lib/db';
+import { useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 
 interface TaskFormDialogProps {
-  task?: Task;
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSubmit: (values: TaskFormValues) => Promise<void>;
-  onDelete?: () => void;
-  submitLabel?: string;
+  task?: TaskEntity;
+  children: React.ReactNode;
 }
 
-function TaskFormDialog({
-  task,
-  isOpen,
-  onOpenChange,
-  onSubmit,
-  onDelete,
-  submitLabel = 'Save',
-}: TaskFormDialogProps) {
-  const form = useForm<TaskFormValues>({
-    resolver: zodResolver(taskFormSchema),
+function TaskFormDialog({ task, children }: TaskFormDialogProps) {
+  const [open, setOpen] = useState(false);
+
+  const form = useForm<CreateTaskDto>({
+    resolver: zodResolver(createTaskSchema),
     defaultValues: {
       title: task?.title ?? '',
       description: task?.description ?? '',
       priority: task?.priority ?? 5,
-      dueDate:
-        task?.dueDate.toISOString().split('T')[0] ??
-        new Date().toISOString().split('T')[0],
+      dueDate: task?.dueDate ?? new Date().toISOString().split('T')[0],
       status: task?.status ?? TaskStatus.TODO,
     },
   });
 
-  const handleSubmit = async (values: TaskFormValues) => {
-    await onSubmit(values);
-    onOpenChange(false);
+  const queryClient = useQueryClient();
+
+  const { mutateAsync: updateTask } = useUpdateTask();
+  const { mutateAsync: addTask } = useAddTask();
+
+  const handleSubmit = async (values: CreateTaskDto) => {
+    if (task) {
+      await updateTask({
+        ...task,
+        ...values,
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['task', task.id],
+      });
+    } else {
+      await addTask(values);
+      queryClient.invalidateQueries({
+        queryKey: ['tasks'],
+      });
+    }
+    setOpen(false);
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>{task ? 'Edit Task' : 'New Task'}</DialogTitle>
@@ -173,24 +177,22 @@ function TaskFormDialog({
             />
             <DialogFooter>
               <div className="flex justify-between w-full">
-                {onDelete && (
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    onClick={onDelete}
-                  >
-                    Delete Task
-                  </Button>
-                )}
+                <div>
+                  {task && (
+                    <DeleteTaskDialog task={task} onOpenChange={setOpen}>
+                      <Button type="button" variant="destructive">
+                        Delete
+                      </Button>
+                    </DeleteTaskDialog>
+                  )}
+                </div>
                 <div className="flex gap-2">
-                  <Button type="submit">{submitLabel}</Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => onOpenChange(false)}
-                  >
-                    Cancel
-                  </Button>
+                  <Button type="submit">{task ? 'Save' : 'Add'}</Button>
+                  <DialogClose asChild>
+                    <Button type="button" variant="outline">
+                      Cancel
+                    </Button>
+                  </DialogClose>
                 </div>
               </div>
             </DialogFooter>
@@ -201,4 +203,51 @@ function TaskFormDialog({
   );
 }
 
-export { TaskFormDialog, type TaskFormValues };
+interface DeleteTaskDialogProps {
+  task: TaskEntity;
+  onOpenChange: (open: boolean) => void;
+  children: React.ReactNode;
+}
+
+function DeleteTaskDialog({
+  task,
+  onOpenChange,
+  children,
+}: DeleteTaskDialogProps) {
+  const [open, setOpen] = useState(false);
+  const queryClient = useQueryClient();
+  const { mutateAsync: deleteTask } = useDeleteTask();
+
+  const handleDelete = async () => {
+    await deleteTask(task.id);
+    queryClient.invalidateQueries({
+      queryKey: ['tasks'],
+    });
+    setOpen(false);
+    onOpenChange(false);
+  };
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>{children}</DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Delete Task</DialogTitle>
+          <DialogDescription>
+            Are you sure you want to delete "{task.title}"? This action cannot
+            be undone.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="outline">Cancel</Button>
+          </DialogClose>
+          <Button variant="destructive" onClick={handleDelete}>
+            Delete
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export { TaskFormDialog };

@@ -1,38 +1,26 @@
 import type { DBSchema, IDBPDatabase } from 'idb';
 import { openDB } from 'idb';
-
-export enum TaskStatus {
-  TODO = 'TODO',
-  IN_PROGRESS = 'IN_PROGRESS',
-  DONE = 'DONE',
-}
-
-export interface Task {
-  id: string;
-  title: string;
-  description: string;
-  dueDate: Date;
-  priority: number; // 0-10
-  status: TaskStatus;
-  createdAt: Date;
-  updatedAt: Date;
-}
+import type { CreateTaskDto, TaskEntity } from './types';
+import { TaskStatus } from './types';
+import type { QueryOptions } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 
 interface TaskDB extends DBSchema {
   tasks: {
     key: string;
-    value: Task;
+    value: TaskEntity;
     indexes: {
       'by-dueDate': Date;
       'by-priority': number;
       'by-status': TaskStatus;
+      'by-id': string;
     };
   };
 }
 
 let db: IDBPDatabase<TaskDB> | null = null;
 
-export const initDB = async () => {
+const _initDB = async () => {
   if (db) return db;
 
   db = await openDB<TaskDB>('task-manager', 1, {
@@ -41,73 +29,115 @@ export const initDB = async () => {
       store.createIndex('by-dueDate', 'dueDate');
       store.createIndex('by-priority', 'priority');
       store.createIndex('by-status', 'status');
+      store.createIndex('by-id', 'id');
     },
   });
 
   return db;
 };
 
-export const getDB = async () => {
+const _getDB = async () => {
   if (!db) {
-    await initDB();
+    await _initDB();
   }
   return db!;
 };
 
-export const addTask = async (
-  task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>,
-) => {
-  const db = await getDB();
-  const id = crypto.randomUUID();
-  const now = new Date();
-  const newTask = {
-    ...task,
-    id,
-    createdAt: now,
-    updatedAt: now,
+function useAddTask() {
+  const mutationFn = async (dto: CreateTaskDto) => {
+    const db = await _getDB();
+    const id = crypto.randomUUID();
+    const now = new Date().toISOString();
+    const newTask = {
+      ...dto,
+      id,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    await db.add('tasks', newTask);
+
+    return newTask;
   };
-  await db.add('tasks', newTask);
 
-  return newTask;
-};
-
-export const updateTask = async (task: Task) => {
-  const db = await getDB();
-  return db.put('tasks', {
-    ...task,
-    updatedAt: new Date(),
+  return useMutation({
+    mutationFn,
   });
-};
+}
 
-export const deleteTask = async (id: string) => {
-  const db = await getDB();
-  return db.delete('tasks', id);
-};
-
-export const getAllTasks = async () => {
-  const db = await getDB();
-  return db.getAll('tasks');
-};
-
-export const getTasksByQuadrant = async (daysThreshold: number = 0) => {
-  const db = await getDB();
-  const tasks = await db.getAll('tasks');
-  const now = new Date();
-  const thresholdDate = new Date();
-  thresholdDate.setDate(now.getDate() + daysThreshold);
-  
-  const result = {
-    q1: tasks.filter((task) => task.priority >= 7 && task.dueDate <= thresholdDate), // Urgent & Important
-    q2: tasks.filter((task) => task.priority >= 7 && task.dueDate > thresholdDate), // Not Urgent & Important
-    q3: tasks.filter((task) => task.priority < 7 && task.dueDate <= thresholdDate), // Urgent & Not Important
-    q4: tasks.filter((task) => task.priority < 7 && task.dueDate > thresholdDate), // Not Urgent & Not Important
+function useUpdateTask() {
+  const mutationFn = async (task: TaskEntity) => {
+    // id + createdAt + CreateTaskDto
+    const db = await _getDB();
+    return db.put('tasks', {
+      ...task,
+      updatedAt: new Date().toISOString(),
+    });
   };
 
-  return result;
-};
+  return useMutation({
+    mutationFn,
+  });
+}
 
-export const getCompletedTasks = async () => {
-  const db = await getDB();
-  const tasks = await db.getAll('tasks');
-  return tasks.filter((task) => task.status === TaskStatus.DONE);
+function useDeleteTask() {
+  const mutationFn = async (id: string) => {
+    const db = await _getDB();
+    return db.delete('tasks', id);
+  };
+
+  return useMutation({
+    mutationFn,
+  });
+}
+
+function useGetAllTasks() {
+  const queryFn = async () => {
+    const db = await _getDB();
+    return db.getAll('tasks');
+  };
+
+  return useQuery({
+    queryKey: ['tasks'],
+    queryFn,
+  });
+}
+
+function useGetCompletedTask() {
+  const queryFn = async () => {
+    const db = await _getDB();
+    const tasks = await db.getAll('tasks');
+    return tasks.filter((task) => task.status === TaskStatus.DONE);
+  };
+
+  return useQuery({
+    queryKey: ['completed-tasks'],
+    queryFn,
+  });
+}
+
+function useTask(
+  id: string,
+  options?: Omit<QueryOptions<TaskEntity | undefined>, 'queryKey' | 'queryFn'>,
+) {
+  return useQuery({
+    queryKey: ['task', id],
+    queryFn: async () => {
+      const db = await _getDB();
+      const task = db.get('tasks', id);
+      if (!task) {
+        throw new Error(`Task with id ${id} not found`);
+      }
+      return task;
+    },
+    ...options,
+  });
+}
+export {
+  useAddTask,
+  useUpdateTask,
+  useDeleteTask,
+  useGetAllTasks,
+  useGetCompletedTask,
+  useTask,
 };
